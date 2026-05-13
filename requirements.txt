@@ -1,0 +1,15 @@
+## Стек
+
+**Backend (parser):**
+- Python 3.11+
+- `aiohttp` + `websockets` — без ccxt, без обёрток
+- `asyncio` — основа
+- хранение состояния — JSON-снапшот на диск (без БД на старте)
+
+**Bot:**
+- `aiogram 3`
+- `loguru` для логов
+
+**Infra:**
+- один Python-процесс, один `main.py`
+- без Docker, без Redis, без PostgreSQL — добавим если реально упрёмся
