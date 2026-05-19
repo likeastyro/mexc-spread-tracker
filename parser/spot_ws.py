@@ -1,7 +1,6 @@
 import asyncio
 import json
 import time
-from typing import Final
 from loguru import logger
 
 import websockets
