@@ -2,6 +2,7 @@ import asyncio
 import json
 import time
 from typing import Final
+from loguru import logger
 
 import websockets
 
@@ -32,7 +33,7 @@ async def run_spot_ws(out_queue: asyncio.Queue) -> None:
                 ping_task = asyncio.create_task(_heartbeat(ws))
                 async for raw in ws:
                     if isinstance(raw, str):
-                        print(f"[spot service] {raw}")
+                        logger.info("spot subscription confirmed: {}", raw)
                         continue
                     wrapper = PushDataV3ApiWrapper_pb2.PushDataV3ApiWrapper()
                     wrapper.ParseFromString(raw)
@@ -54,7 +55,7 @@ async def run_spot_ws(out_queue: asyncio.Queue) -> None:
                         )
                         await out_queue.put(ticker)
         except (websockets.exceptions.ConnectionClosed, OSError) as e:
-            print(f"[spot] connection lost: {e}, reconnect in {RECONNECT_DELAY_SEC}s")
+            logger.warning("spot connection lost: {}, reconnect in {}s", e, RECONNECT_DELAY_SEC)
             await asyncio.sleep(RECONNECT_DELAY_SEC)
             continue
         finally:

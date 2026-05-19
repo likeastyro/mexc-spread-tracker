@@ -1,6 +1,7 @@
 import asyncio
 import json
 import time
+from loguru import logger
 
 import websockets
 
@@ -56,7 +57,7 @@ async def run_futures_ws(out_queue: asyncio.Queue) -> None:
                         )
                         await out_queue.put(ticker)
         except (websockets.exceptions.ConnectionClosed, OSError) as e:
-            print(f"[futures] connection lost: {e}, reconnect in {RECONNECT_DELAY_SEC}s")
+            logger.warning("futures connection lost: {}, reconnect in {}s", e, RECONNECT_DELAY_SEC)
             await asyncio.sleep(RECONNECT_DELAY_SEC)
             continue
         finally:
