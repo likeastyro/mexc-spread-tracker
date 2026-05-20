@@ -13,3 +13,13 @@ class SpreadEvent:
     volume_24h_usd: float
     duration_sec: int | None             # None для open
     reply_to_message_id: int | None      # None для open
+
+from typing import Literal  
+
+@dataclass
+class Ticker:
+    market: Literal["spot", "futures"]
+    symbol: str                        # base-only, без квоты: "BTC", "PEPE"
+    price: float
+    volume_24h_usd: float
+    timestamp: float                   # time.time() в момент создания
