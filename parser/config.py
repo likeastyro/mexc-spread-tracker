@@ -17,3 +17,8 @@ MIN_VOLUME_24H_USD = 100_000
 
 # Symbol normalization
 QUOTE = "USDT"
+
+# State manager thresholds
+OPEN_THRESHOLD = 1.5      # % — открыть алерт когда |спред| >= этого
+CLOSE_THRESHOLD = 0.5     # % — закрыть алерт когда |спред| < этого
+DEEPEN_TRIGGER = 1.5      # множитель — углубить когда |спред| >= peak * этого
