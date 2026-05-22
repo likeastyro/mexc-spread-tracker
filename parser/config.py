@@ -22,3 +22,8 @@ QUOTE = "USDT"
 OPEN_THRESHOLD = 1.5      # % — открыть алерт когда |спред| >= этого
 CLOSE_THRESHOLD = 0.5     # % — закрыть алерт когда |спред| < этого
 DEEPEN_TRIGGER = 1.5      # множитель — углубить когда |спред| >= peak * этого
+
+# State manager debounce    
+OPEN_DEBOUNCE = 3           # тиков подряд выше OPEN_THRESHOLD чтобы открыть
+CLOSE_DEBOUNCE = 5          # тиков подряд ниже CLOSE_THRESHOLD чтобы закрыть
+DEEPEN_DEBOUNCE = 3        # тиков подряд выше DEEPEN_TRIGGER чтобы углубить
