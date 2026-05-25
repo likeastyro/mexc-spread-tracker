@@ -27,3 +27,7 @@ DEEPEN_TRIGGER = 1.5      # множитель — углубить когда |
 OPEN_DEBOUNCE = 3           # тиков подряд выше OPEN_THRESHOLD чтобы открыть
 CLOSE_DEBOUNCE = 5          # тиков подряд ниже CLOSE_THRESHOLD чтобы закрыть
 DEEPEN_DEBOUNCE = 3        # тиков подряд выше DEEPEN_TRIGGER чтобы углубить
+
+# Persistence
+SNAPSHOT_INTERVAL_SEC = 60     # как часто сохранять state.json
+STATE_FILE_PATH = "data/state.json"
