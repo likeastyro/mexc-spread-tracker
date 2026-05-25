@@ -27,12 +27,25 @@ def save_state(open_alerts: dict, daily_peaks: dict) -> None:
         "state snapshot saved ({} alerts, {} daily peaks)",
         len(open_alerts), len(daily_peaks),
     )        
-   
+
+def load_state() -> tuple[dict, dict]:
+    state_path = Path(STATE_FILE_PATH)
+    if not state_path.exists():
+        logger.info("no state file found, starting fresh")
+        return {}, {}
+    with open(state_path, "r") as f:
+        state = json.load(f)
+    open_alerts = state.get("open_alerts", {})
+    daily_peaks = state.get("daily_peaks", {})
+    logger.info(
+        "state loaded ({} alerts, {} daily peaks)",
+        len(open_alerts), len(daily_peaks),
+    )
+    return open_alerts, daily_peaks
 
 async def run_state_manager(in_queue: asyncio.Queue, out_queue: asyncio.Queue) -> None:
     last_prices: dict[tuple[str, str], float] = {}
-    open_alerts: dict[str, dict] = {}
-    daily_peaks: dict[str, float] = {}
+    open_alerts, daily_peaks = load_state()
     pending_open: dict[str, int] = {}
     pending_close: dict[str, int] = {}
     pending_deepen: dict[str, int] = {}
