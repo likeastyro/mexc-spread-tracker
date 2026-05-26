@@ -1,5 +1,8 @@
 import asyncio
 import time
+import json
+from pathlib import Path
+
 from datetime import datetime, timedelta, timezone
 
 from loguru import logger
@@ -8,13 +11,41 @@ from shared.models import Ticker, SpreadEvent
 from parser.config import (
     OPEN_THRESHOLD, CLOSE_THRESHOLD, DEEPEN_TRIGGER, MIN_VOLUME_24H_USD,
     OPEN_DEBOUNCE, CLOSE_DEBOUNCE, DEEPEN_DEBOUNCE,
+    SNAPSHOT_INTERVAL_SEC, STATE_FILE_PATH,  
 )
 
+def save_state(open_alerts: dict, daily_peaks: dict) -> None:
+    state_path = Path(STATE_FILE_PATH)
+    state_path.parent.mkdir(parents=True, exist_ok=True)
+    state = {
+        'open_alerts': open_alerts,
+        'daily_peaks': daily_peaks,
+    }
+    with open(state_path, "w") as f:
+        json.dump(state, f, indent=2)
+    logger.info(
+        "state snapshot saved ({} alerts, {} daily peaks)",
+        len(open_alerts), len(daily_peaks),
+    )        
+
+def load_state() -> tuple[dict, dict]:
+    state_path = Path(STATE_FILE_PATH)
+    if not state_path.exists():
+        logger.info("no state file found, starting fresh")
+        return {}, {}
+    with open(state_path, "r") as f:
+        state = json.load(f)
+    open_alerts = state.get("open_alerts", {})
+    daily_peaks = state.get("daily_peaks", {})
+    logger.info(
+        "state loaded ({} alerts, {} daily peaks)",
+        len(open_alerts), len(daily_peaks),
+    )
+    return open_alerts, daily_peaks
 
 async def run_state_manager(in_queue: asyncio.Queue, out_queue: asyncio.Queue) -> None:
     last_prices: dict[tuple[str, str], float] = {}
-    open_alerts: dict[str, dict] = {}
-    daily_peaks: dict[str, float] = {}
+    open_alerts, daily_peaks = load_state()
     pending_open: dict[str, int] = {}
     pending_close: dict[str, int] = {}
     pending_deepen: dict[str, int] = {}
@@ -29,7 +60,14 @@ async def run_state_manager(in_queue: asyncio.Queue, out_queue: asyncio.Queue) -
             daily_peaks.clear()
             logger.info("daily_peaks reset at UTC midnight")
 
+    async def periodic_snapshot() -> None:
+        while True:
+            await asyncio.sleep(SNAPSHOT_INTERVAL_SEC)
+            save_state(open_alerts, daily_peaks)
+
+    
     reset_task = asyncio.create_task(reset_daily_peaks())
+    snapshot_task = asyncio.create_task(periodic_snapshot())
     try:
         while True:
             ticker: Ticker = await in_queue.get()
@@ -133,4 +171,6 @@ async def run_state_manager(in_queue: asyncio.Queue, out_queue: asyncio.Queue) -
                     if symbol in pending_deepen:
                         del pending_deepen[symbol]
     finally:
+        save_state(open_alerts, daily_peaks)
+        snapshot_task.cancel()
         reset_task.cancel()
