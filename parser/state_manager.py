@@ -171,4 +171,6 @@ async def run_state_manager(in_queue: asyncio.Queue, out_queue: asyncio.Queue) -
                     if symbol in pending_deepen:
                         del pending_deepen[symbol]
     finally:
+        save_state(open_alerts, daily_peaks)
+        snapshot_task.cancel()
         reset_task.cancel()
