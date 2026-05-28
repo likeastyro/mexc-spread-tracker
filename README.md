@@ -156,6 +156,26 @@ Recommended deployment notes:
 - Keep a persistent disk attached if you want spread snapshots and blacklist state to survive restarts
 - Point `STATE_FILE_PATH` and `BLACKLIST_DB_PATH` to the mounted disk
 
+## Deployment notes for a pet project
+
+For this repository, local execution is the primary supported mode.
+
+Why:
+
+- the bot is a long-running process that depends on continuous Telegram polling
+- the parser maintains persistent websocket connections to MEXC
+- the current persistence model uses local files for spread snapshots and a local SQLite file for the blacklist
+
+Render's free web service tier is not a good fit for that architecture because:
+
+- free web services spin down after idle time
+- free web services do not support persistent disks
+- the current bot is not designed as an HTTP web app
+
+If you just want to keep this as a pet project, it is perfectly reasonable to run it locally and skip hosting for now.
+
+If you later want a stable always-on deployment, the recommended Render setup is a paid background worker with persistent storage.
+
 ## Repository layout
 
 ```text
