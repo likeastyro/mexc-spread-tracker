@@ -10,6 +10,12 @@ from bot.keyboards import market_links_keyboard
 
 EventLike = Mapping[str, Any] | Any
 
+LONG_EMOJI = '<tg-emoji emoji-id="5429463966432643712">🤑</tg-emoji>'
+SHORT_EMOJI = '<tg-emoji emoji-id="5429165728198576891">😡</tg-emoji>'
+CHECK_EMOJI = '<tg-emoji emoji-id="5472123673265590913">✅</tg-emoji>'
+VOLUME_EMOJI = '<tg-emoji emoji-id="5409048419211682843">💵</tg-emoji>'
+PRICE_EMOJI = '<tg-emoji emoji-id="5332722143077613679">▶️</tg-emoji>'
+
 
 def format_event_message(event: EventLike) -> tuple[str, object | None]:
     event_type = _event_type(event)
@@ -43,35 +49,50 @@ def event_thread_key(event: EventLike) -> str:
 
 def _format_open(event: EventLike) -> str:
     emoji, direction = _direction_style(event)
-    return "\n".join(
+    daily_peak = _daily_peak_line(event)
+    lines = [
+        f"{emoji} <b>{direction}</b> <b>#{escape(_symbol(event))}</b> spread "
+        f"<b>{_signed_percent(event, 'spread_pct', 'spread_percent', 'spread')}</b> detected",
+    ]
+    if daily_peak:
+        lines.append(daily_peak)
+    lines.extend(
         [
-            f"{emoji} <b>{direction}</b> <b>#{escape(_symbol(event))}</b> Spread "
-            f"<b>{_signed_percent(event, 'spread_pct', 'spread_percent', 'spread')}</b> detected",
-            f"🎰 Price SPOT <code>{_usd(event, 'spot_price')}</code>",
-            f"🎰 Price FUT  <code>{_usd(event, 'fut_price', 'futures_price', 'future_price')}</code>",
-            f"📊 24h Vol <code>{_compact_usd(event, 'volume_24h_usd')}</code>",
+            "",
+            f"{PRICE_EMOJI} Spot <code>{_usd(event, 'spot_price')}</code>",
+            f"{PRICE_EMOJI} Futures <code>{_usd(event, 'fut_price', 'futures_price', 'future_price')}</code>",
+            "",
+            f"{VOLUME_EMOJI} 24h volume <code>{_compact_usd(event, 'volume_24h_usd')}</code>",
         ]
     )
+    return "\n".join(lines)
 
 
 def _format_deepen(event: EventLike) -> str:
     emoji, direction = _direction_style(event)
-    return "\n".join(
+    daily_peak = _daily_peak_line(event)
+    lines = [
+        f"{emoji} <b>{direction}</b> <b>#{escape(_symbol(event))}</b> spread "
+        f"<b>{_signed_percent(event, 'spread_pct', 'spread_percent', 'spread')}</b> detected (deepened)",
+    ]
+    if daily_peak:
+        lines.append(daily_peak)
+    lines.extend(
         [
-            f"{emoji} <b>{direction}</b> <b>#{escape(_symbol(event))}</b> Spread "
-            f"<b>{_signed_percent(event, 'spread_pct', 'spread_percent', 'spread')}</b> detected (deepened)",
-            f"🎰 Price SPOT <code>{_usd(event, 'spot_price')}</code>",
-            f"🎰 Price FUT  <code>{_usd(event, 'fut_price', 'futures_price', 'future_price')}</code>",
-            f"📊 24h Vol <code>{_compact_usd(event, 'volume_24h_usd')}</code>",
+            "",
+            f"{PRICE_EMOJI} Spot <code>{_usd(event, 'spot_price')}</code>",
+            f"{PRICE_EMOJI} Futures <code>{_usd(event, 'fut_price', 'futures_price', 'future_price')}</code>",
+            "",
+            f"{VOLUME_EMOJI} 24h volume <code>{_compact_usd(event, 'volume_24h_usd')}</code>",
         ]
     )
+    return "\n".join(lines)
 
 
 def _format_close(event: EventLike) -> str:
     return (
-        f"✅ <b>#{escape(_symbol(event))}</b> Aligned in "
-        f"<b>{escape(_format_duration(_value(event, 'duration_sec', default=None)))}</b> "
-        f"| daily peak was <b>{_absolute_percent(event, 'daily_peak_pct')}</b>"
+        f"{CHECK_EMOJI} <b>#{escape(_symbol(event))}</b> aligned in "
+        f"<b>{escape(_format_duration(_value(event, 'duration_sec', default=None)))}</b>"
     )
 
 
@@ -128,6 +149,22 @@ def _absolute_percent(event: EventLike, *names: str) -> str:
         return escape(str(value))
 
 
+def _daily_peak_line(event: EventLike) -> str:
+    value = _value(event, "daily_peak_pct", default=None)
+    if value is None:
+        return ""
+    try:
+        peak_value = abs(float(value))
+    except (TypeError, ValueError):
+        return f"daily peak was <b>{escape(str(value))}</b>"
+
+    direction = str(_value(event, "direction", default="LONG")).strip().upper()
+    if direction == "SHORT":
+        peak_value = -peak_value
+
+    return f"daily peak was <b>{peak_value:+.2f}%</b>"
+
+
 def _number(event: EventLike, *names: str) -> str:
     value = _value(event, *names, default=None)
     if value is None:
@@ -175,17 +212,26 @@ def _format_duration(value: Any) -> str:
     except (TypeError, ValueError):
         return str(value)
 
-    if seconds >= 120:
-        minutes = max(1, round(seconds / 60))
-        return f"{minutes} min"
-    return f"{seconds} sec"
+    if seconds < 60:
+        return f"{seconds} sec"
+
+    minutes, rem_seconds = divmod(seconds, 60)
+    if minutes < 60:
+        if rem_seconds == 0:
+            return f"{minutes} min"
+        return f"{minutes} min {rem_seconds} sec"
+
+    hours, rem_minutes = divmod(minutes, 60)
+    if rem_minutes == 0:
+        return f"{hours} h"
+    return f"{hours} h {rem_minutes} min"
 
 
 def _direction_style(event: EventLike) -> tuple[str, str]:
     direction = str(_value(event, "direction", default="LONG")).strip().upper()
     if direction == "SHORT":
-        return "🔴", "SHORT"
-    return "🟢", "LONG"
+        return SHORT_EMOJI, "SHORT"
+    return LONG_EMOJI, "LONG"
 
 
 def _value(event: EventLike, *names: str, default: Any = None) -> Any:
