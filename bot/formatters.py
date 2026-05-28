@@ -62,7 +62,8 @@ def _format_open(event: EventLike) -> str:
             f"{PRICE_EMOJI} Spot <code>{_usd(event, 'spot_price')}</code>",
             f"{PRICE_EMOJI} Futures <code>{_usd(event, 'fut_price', 'futures_price', 'future_price')}</code>",
             "",
-            f"{VOLUME_EMOJI} 24h volume <code>{_compact_usd(event, 'volume_24h_usd')}</code>",
+            f"{VOLUME_EMOJI} Spot 24h amount (USDT) <code>{_compact_usd(event, 'spot_volume_24h_usd', 'volume_24h_usd')}</code>",
+            f"{VOLUME_EMOJI} Futures 24h amount (USDT) <code>{_compact_usd(event, 'fut_volume_24h_usd', 'volume_24h_usd')}</code>",
         ]
     )
     return "\n".join(lines)
@@ -83,7 +84,8 @@ def _format_deepen(event: EventLike) -> str:
             f"{PRICE_EMOJI} Spot <code>{_usd(event, 'spot_price')}</code>",
             f"{PRICE_EMOJI} Futures <code>{_usd(event, 'fut_price', 'futures_price', 'future_price')}</code>",
             "",
-            f"{VOLUME_EMOJI} 24h volume <code>{_compact_usd(event, 'volume_24h_usd')}</code>",
+            f"{VOLUME_EMOJI} Spot 24h amount (USDT) <code>{_compact_usd(event, 'spot_volume_24h_usd', 'volume_24h_usd')}</code>",
+            f"{VOLUME_EMOJI} Futures 24h amount (USDT) <code>{_compact_usd(event, 'fut_volume_24h_usd', 'volume_24h_usd')}</code>",
         ]
     )
     return "\n".join(lines)

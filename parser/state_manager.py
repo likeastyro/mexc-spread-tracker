@@ -45,6 +45,7 @@ def load_state() -> tuple[dict, dict]:
 
 async def run_state_manager(in_queue: asyncio.Queue, out_queue: asyncio.Queue) -> None:
     last_prices: dict[tuple[str, str], float] = {}
+    last_volumes: dict[tuple[str, str], float] = {}
     open_alerts, daily_peaks = load_state()
     pending_open: dict[str, int] = {}
     pending_close: dict[str, int] = {}
@@ -76,12 +77,15 @@ async def run_state_manager(in_queue: asyncio.Queue, out_queue: asyncio.Queue) -
                 continue
 
             last_prices[(ticker.market, ticker.symbol)] = ticker.price
+            last_volumes[(ticker.market, ticker.symbol)] = ticker.volume_24h_usd
 
             if ('spot', ticker.symbol) not in last_prices or ('futures', ticker.symbol) not in last_prices:
                 continue
 
             spot_price = last_prices[('spot', ticker.symbol)]
             fut_price = last_prices[('futures', ticker.symbol)]
+            spot_volume_24h_usd = last_volumes[('spot', ticker.symbol)]
+            fut_volume_24h_usd = last_volumes[('futures', ticker.symbol)]
             spread_pct = (fut_price - spot_price) / spot_price * 100
             symbol = ticker.symbol
 
@@ -105,7 +109,9 @@ async def run_state_manager(in_queue: asyncio.Queue, out_queue: asyncio.Queue) -
                             fut_price=fut_price,
                             spread_pct=spread_pct,
                             daily_peak_pct=daily_peaks[symbol],
-                            volume_24h_usd=ticker.volume_24h_usd,
+                            volume_24h_usd=max(spot_volume_24h_usd, fut_volume_24h_usd),
+                            spot_volume_24h_usd=spot_volume_24h_usd,
+                            fut_volume_24h_usd=fut_volume_24h_usd,
                             duration_sec=None,
                             reply_to_message_id=None,
                         )
@@ -131,7 +137,9 @@ async def run_state_manager(in_queue: asyncio.Queue, out_queue: asyncio.Queue) -
                             fut_price=fut_price,
                             spread_pct=spread_pct,
                             daily_peak_pct=daily_peaks[symbol],
-                            volume_24h_usd=ticker.volume_24h_usd,
+                            volume_24h_usd=max(spot_volume_24h_usd, fut_volume_24h_usd),
+                            spot_volume_24h_usd=spot_volume_24h_usd,
+                            fut_volume_24h_usd=fut_volume_24h_usd,
                             duration_sec=duration_sec,
                             reply_to_message_id=None,
                         )
@@ -160,7 +168,9 @@ async def run_state_manager(in_queue: asyncio.Queue, out_queue: asyncio.Queue) -
                             fut_price=fut_price,
                             spread_pct=spread_pct,
                             daily_peak_pct=daily_peaks[symbol],
-                            volume_24h_usd=ticker.volume_24h_usd,
+                            volume_24h_usd=max(spot_volume_24h_usd, fut_volume_24h_usd),
+                            spot_volume_24h_usd=spot_volume_24h_usd,
+                            fut_volume_24h_usd=fut_volume_24h_usd,
                             duration_sec=None,
                             reply_to_message_id=None,
                         )

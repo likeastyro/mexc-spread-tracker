@@ -1,98 +1,83 @@
-# Контракт парсер ↔ бот
+# Parser to Bot Event Contract
 
-Документация для команды. Описывает что парсер кладёт в очередь, и что бот должен показать пользователю.
+Internal reference for the spread parser and Telegram bot integration.
 
----
+## Overview
 
-## Общая логика
+The parser runs continuously, watches all tracked MEXC spot and futures pairs, and pushes `SpreadEvent` objects into an `asyncio.Queue`.
 
-Парсер крутится 24/7 и держит в памяти все открытые сейчас спреды по всем парам MEXC. Когда случается значимое событие — пушит в `asyncio.Queue` объект `SpreadEvent` одного из трёх типов:
+The bot consumes those events and turns them into Telegram messages.
 
-| Тип | Когда | Что делает бот |
-|---|---|---|
-| `open` | Открылся новый спред (пересёк порог) | Шлёт новое сообщение, **сохраняет `message_id`** в shared dict |
-| `deepen` | Уже открытый спред углубился (новый локальный максимум) | Шлёт **reply** на сохранённое сообщение |
-| `close` | Спред схлопнулся обратно (упал ниже порога закрытия) | Шлёт **reply** на сохранённое сообщение, **забывает `message_id`** |
+## Event lifecycle
 
----
+The parser emits three event types:
 
-## Структура SpreadEvent
+| Event type | When it is emitted | Bot behavior |
+| --- | --- | --- |
+| `open` | A new spread crosses the open threshold | Send a fresh Telegram message and remember its `message_id` |
+| `deepen` | The same spread reaches a new significant peak | Send a reply to the remembered `open` message |
+| `close` | The spread collapses back below the close threshold | Send a reply to the remembered `open` message and forget that thread |
 
-| Поле | Тип | Описание |
-|---|---|---|
-| `event_type` | `"open"` / `"deepen"` / `"close"` | Определяет что делать |
-| `symbol` | `str` | Голый тикер, **без `_USDT` и без `$`**. Пример: `"PEPE"` |
-| `direction` | `"LONG"` / `"SHORT"` | `LONG` = fut > spot, `SHORT` = fut < spot |
-| `spot_price` | `float` | Текущая спот-цена |
-| `fut_price` | `float` | Текущая фьючерс-цена |
-| `spread_pct` | `float` | Подписанный спред. `LONG` = плюс, `SHORT` = минус. Знак нужен для эмодзи в форматтере |
-| `daily_peak_pct` | `float` | Максимум `|spread|` по этому символу за сегодня UTC. Сбрасывается в 00:00 UTC. **Используется только в close-сообщении** |
-| `volume_24h_usd` | `float` | Дневной оборот в USD |
-| `duration_sec` | `int \| None` | Сколько прожил спред. `None` для `open`, число для `deepen` / `close` |
-| `reply_to_message_id` | `int \| None` | `None` для `open`, `message_id` open-сообщения для `deepen` / `close` |
+## `SpreadEvent` schema
 
----
+| Field | Type | Description |
+| --- | --- | --- |
+| `event_type` | `"open" \| "deepen" \| "close"` | Spread lifecycle event |
+| `symbol` | `str` | Base asset symbol, no `_USDT` suffix. Example: `PEPE` |
+| `direction` | `"LONG" \| "SHORT"` | `LONG` means futures price is above spot. `SHORT` means futures price is below spot |
+| `spot_price` | `float` | Latest matched spot price |
+| `fut_price` | `float` | Latest matched futures price |
+| `spread_pct` | `float` | Signed spread percentage. Positive for `LONG`, negative for `SHORT` |
+| `daily_peak_pct` | `float` | Highest absolute spread observed for the symbol during the current UTC day |
+| `volume_24h_usd` | `float` | Compatibility field. Current code fills it with `max(spot_amount, futures_amount)` |
+| `spot_volume_24h_usd` | `float` | Spot 24h amount in quote currency (USDT) |
+| `fut_volume_24h_usd` | `float` | Futures 24h amount in quote currency (USDT) |
+| `duration_sec` | `int \| None` | Spread lifetime in seconds. Present for `close`, absent for `open` and `deepen` |
+| `reply_to_message_id` | `int \| None` | Optional explicit reply target. The current bot mostly relies on its own in-memory thread mapping |
 
-## Формат сообщений
+## Message expectations
 
-### Open / Deepen
+### Open and deepen
 
-Формат одинаковый, отличается только пометкой в конце первой строки.
+The bot should show:
 
-**LONG:**
-```
-🟢 LONG #PEPE Spread +10.77% detected
-🎰 Price SPOT $0.001200
-🎰 Price FUT  $0.001329
-📊 24h Vol $4.2M
-[Spot]  [Futures]   ← inline-кнопки
-```
+- direction and signed spread percent
+- symbol
+- daily peak
+- spot price
+- futures price
+- spot 24h amount in USDT
+- futures 24h amount in USDT
+- inline buttons for Spot and Futures market pages
 
-**SHORT:**
-```
-🔴 SHORT #LFI Spread -9.06% detected
-🎰 Price SPOT $0.6626
-🎰 Price FUT  $0.6027
-📊 24h Vol $1.8M
-[Spot]  [Futures]
-```
-
-**Для `deepen`** — то же самое, только в конце первой строки `detected (deepened)` или `↑ deepened` (на выбор форматтера).
+`deepen` messages use the same structure as `open`, but append `(deepened)` to the first line.
 
 ### Close
 
-Короткое сообщение, отправляется как **reply** на open-сообщение.
+The bot should send a short threaded message:
 
-```
-✅ #PEPE Aligned in 94 sec | daily peak was 14.2%
-```
-
-Если `duration_sec > 60`:
-```
-✅ #LFI Aligned in 12 min | daily peak was 9.1%
+```text
+✅ #PEPE aligned in 12 min
 ```
 
-В close-сообщении **кнопок нет** — спред закрылся, нечего жать.
+No buttons are attached to `close` events.
 
----
+## URL rules
 
-## Inline-кнопки (open / deepen)
+The parser emits raw symbols such as `PEPE`.
 
-Каждое open и deepen сообщение содержит две кнопки:
+The bot is responsible for building market URLs:
 
-- **Spot** → `https://www.mexc.com/exchange/{symbol}_USDT`
-- **Futures** → `https://futures.mexc.com/exchange/{symbol}_USDT`
+- Spot: `https://www.mexc.com/exchange/{symbol}_USDT`
+- Futures: `https://futures.mexc.com/exchange/{symbol}_USDT`
 
-> **Важно:** в `SpreadEvent.symbol` приходит голый тикер (`PEPE`). Сборка URL — на стороне бота: `_USDT` дописывает форматтер.
+## Current runtime wiring
 
----
+The production entrypoint is [main.py](../main.py):
 
-## Команды бота
+1. `run_spot_ws(market_data_queue)`
+2. `run_futures_ws(market_data_queue)`
+3. `run_state_manager(market_data_queue, spread_event_queue)`
+4. `run_bot(token=..., queue=spread_event_queue)`
 
-| Команда | Описание |
-|---|---|
-| `/start` | Приветствие, краткое описание что делает бот. Дефолтные настройки уже работают. |
-| `/status` | Снимок всех открытых спредов сейчас |
-| `/threshold X` | Опционально — изменить порог открытия |
-
-
+This means the bot now receives real parser output, not the legacy fake event producer.

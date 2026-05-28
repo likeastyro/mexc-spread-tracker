@@ -32,7 +32,10 @@ async def run_spot_ws(out_queue: asyncio.Queue) -> None:
                 ping_task = asyncio.create_task(_heartbeat(ws))
                 async for raw in ws:
                     if isinstance(raw, str):
-                        logger.info("spot subscription confirmed: {}", raw)
+                        if '"msg":"PONG"' in raw:
+                            logger.debug("spot heartbeat acknowledged")
+                        else:
+                            logger.info("spot subscription confirmed: {}", raw)
                         continue
                     wrapper = PushDataV3ApiWrapper_pb2.PushDataV3ApiWrapper()
                     wrapper.ParseFromString(raw)

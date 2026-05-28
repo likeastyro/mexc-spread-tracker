@@ -1,0 +1,18 @@
+services:
+  - type: worker
+    name: mexc-spread-bot
+    runtime: python
+    plan: starter
+    buildCommand: "pip install -r requirements.txt && python scripts/generate_proto.py"
+    startCommand: "python main.py"
+    disk:
+      name: mexc-spread-bot-data
+      mountPath: /var/data
+      sizeGB: 1
+    envVars:
+      - key: BOT_TOKEN
+        sync: false
+      - key: BLACKLIST_DB_PATH
+        value: /var/data/blacklist.sqlite3
+      - key: STATE_FILE_PATH
+        value: /var/data/state.json

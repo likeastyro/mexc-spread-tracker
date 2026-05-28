@@ -1,30 +1,15 @@
-<<<<<<< HEAD
-## Стек
-
-**Backend (parser):**
-- Python 3.11+
-- `aiohttp` + `websockets` — без ccxt, без обёрток
-- `asyncio` — основа
-- хранение состояния — JSON-снапшот на диск (без БД на старте)
-
-**Bot:**
-- `aiogram 3`
-- `loguru` для логов
-
-**Infra:**
-- один Python-процесс, один `main.py`
-- без Docker, без Redis, без PostgreSQL — добавим если реально упрёмся
-=======
 aiohappyeyeballs==2.6.1
 aiohttp==3.13.5
+aiogram==3.22.0
 aiosignal==1.4.0
 attrs==26.1.0
 frozenlist==1.8.0
+grpcio-tools==1.80.0
 idna==3.15
 loguru==0.7.3
 multidict==6.7.1
 propcache==0.5.2
-protobuf==7.34.1
+protobuf==6.33.6
+python-dotenv==1.1.1
 websockets==16.0
 yarl==1.23.0
->>>>>>> main

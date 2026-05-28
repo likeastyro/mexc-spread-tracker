@@ -1,6 +1,12 @@
+.DS_Store
+.env
 .venv/
+.pytest_cache/
+.ruff_cache/
+.vscode/
 venv/
 __pycache__/
+*.py[cod]
 *_pb2.py
-.env
+.bot_state/
 data/

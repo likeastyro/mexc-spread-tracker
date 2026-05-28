@@ -1,25 +1,27 @@
 from dataclasses import dataclass
 from typing import Literal
 
+
 @dataclass
 class SpreadEvent:
     event_type: Literal["open", "deepen", "close"]
-    symbol: str                          # "PEPE", без _USDT
+    symbol: str
     direction: Literal["LONG", "SHORT"]
     spot_price: float
     fut_price: float
-    spread_pct: float                    # подписанный: LONG=+, SHORT=-
-    daily_peak_pct: float                # |max| за сегодня UTC, для close
+    spread_pct: float
+    daily_peak_pct: float
     volume_24h_usd: float
-    duration_sec: int | None             # None для open
-    reply_to_message_id: int | None      # None для open
+    spot_volume_24h_usd: float
+    fut_volume_24h_usd: float
+    duration_sec: int | None
+    reply_to_message_id: int | None
 
-from typing import Literal  
 
 @dataclass
 class Ticker:
     market: Literal["spot", "futures"]
-    symbol: str                        # base-only, без квоты: "BTC", "PEPE"
+    symbol: str
     price: float
     volume_24h_usd: float
-    timestamp: float                   # time.time() в момент создания
+    timestamp: float
