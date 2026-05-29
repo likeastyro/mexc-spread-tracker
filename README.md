@@ -191,6 +191,8 @@ scripts/       Utility scripts, including protobuf generation
 - [Parser/Bot Contract](./docs/contract_parser_bot.md)
 - [MEXC WebSocket Notes](./docs/mexc_api_notes.md)
 
+## Website
+- [Website](https://mstbot.vercel.app/)
 ## Contributors
 
 This project was built by two contributors:
